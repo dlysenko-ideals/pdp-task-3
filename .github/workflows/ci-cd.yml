@@ -82,4 +82,23 @@ jobs:
         env:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
-          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET
+          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --delete
+
+  notify:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, build, s3-sync]
+    if: always()
+
+    steps:
+      - name: Send Slack Notification
+        run: |
+          if [[ "${{ needs.lint-and-test.result }}" == "success" && "${{ needs.build.result }}" == "success" && "${{ needs.s3-sync.result }}" == "success" ]]; then
+            message="🚀 Deployment successful for ${{ github.repository }} on branch ${{ github.ref_name }}"
+          else
+            message="❌ Deployment failed for ${{ github.repository }} on branch ${{ github.ref_name }}"
+          fi
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${message}\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
