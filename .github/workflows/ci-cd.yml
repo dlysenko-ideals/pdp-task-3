@@ -82,7 +82,9 @@ jobs:
         env:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
-          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --delete
+          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --delete --exclude "*.html" --cache-control "max-age=31536000,public"
+
+          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --exclude "*" --include "*.html" --cache-control "max-age=0,no-cache,no-store,must-revalidate"
 
   notify:
     name: Slack Notification

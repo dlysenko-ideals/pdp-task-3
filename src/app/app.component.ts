@@ -8,5 +8,5 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  protected title = 'pdp-task-32';
+  protected title = 'pdp-task-3';
 }
