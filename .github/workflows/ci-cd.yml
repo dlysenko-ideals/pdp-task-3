@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    types: [opened, reopened]
+    types: [opened, synchronize, reopened]
 
 permissions:
   id-token: write
@@ -21,7 +21,7 @@ jobs:
       - name: Get PR Reviewers
         id: reviewers
         run: |
-          REVIEWERS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].login' | tr '\n' ',' | sed -E 's/(.*)/<@\1>/' | tr '\n' ',' | sed 's/,$//')
+          REVIEWERS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].name' | tr '\n' ',' | sed -E 's/(.*)/<@\1>/' | tr '\n' ',' | sed 's/,$//')
           echo "reviewers=${REVIEWERS:-"Not assigned"}" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
@@ -33,7 +33,7 @@ jobs:
           *Project*: <https://github.com/${{ github.repository }}|${{ github.event.repository.name }}>
           *Title*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
           *Changed files*: ${{ github.event.pull_request.changed_files }}
-          *Author*: ${{ github.event.pull_request.user.login }}
+          *Author*: ${{ github.event.pull_request.user.name }}
           *Reviewers*: ${{ steps.reviewers.outputs.reviewers }}
           EOF
           )
