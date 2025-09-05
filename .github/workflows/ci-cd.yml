@@ -3,12 +3,45 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, reopened]
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  notify-pr:
+    name: PR Notification
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Get PR Reviewers
+        id: reviewers
+        run: |
+          REVIEWERS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].login' | tr '\n' ',' | sed -E 's/(.*)/<@\1>/' | tr '\n' ',' | sed 's/,$//')
+          echo "reviewers=${REVIEWERS:-"Not assigned"}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Send PR Slack Notification
+        run: |
+          message=$(cat <<-EOF
+          ✅ A new pull request has been created:
+          *Project*: <https://github.com/${{ github.repository }}|${{ github.event.repository.name }}>
+          *Title*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
+          *Changed files*: ${{ github.event.pull_request.changed_files }}
+          *Author*: ${{ github.event.pull_request.user.login }}
+          *Reviewers*: ${{ steps.reviewers.outputs.reviewers }}
+          EOF
+          )
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${message}\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
