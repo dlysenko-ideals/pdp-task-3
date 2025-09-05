@@ -18,11 +18,30 @@ jobs:
     if: github.event_name == 'pull_request'
 
     steps:
-      - name: Get PR Reviewers
-        id: reviewers
+      - name: Get PR Author Name and Reviewers
+        id: pr-info
         run: |
-          REVIEWERS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].name' | tr '\n' ',' | sed -E 's/(.*)/<@\1>/' | tr '\n' ',' | sed 's/,$//')
-          echo "reviewers=${REVIEWERS:-"Not assigned"}" >> $GITHUB_OUTPUT
+          AUTHOR_INFO=$(gh api "/users/${{ github.event.pull_request.user.login }}")
+          AUTHOR_NAME=$(echo "$AUTHOR_INFO" | jq -r '.name // .login')
+          echo "author_name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
+
+          REVIEWER_LOGINS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].login')
+
+          if [ -n "$REVIEWER_LOGINS" ]; then
+            REVIEWER_NAMES=""
+            for login in $REVIEWER_LOGINS; do
+              USER_INFO=$(gh api "/users/$login")
+              USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
+              if [ -z "$REVIEWER_NAMES" ]; then
+                REVIEWER_NAMES="$USER_NAME"
+              else
+                REVIEWER_NAMES="$REVIEWER_NAMES, $USER_NAME"
+              fi
+            done
+            echo "reviewers=$REVIEWER_NAMES" >> $GITHUB_OUTPUT
+          else
+            echo "reviewers=Not assigned" >> $GITHUB_OUTPUT
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -33,8 +52,8 @@ jobs:
           *Project*: <https://github.com/${{ github.repository }}|${{ github.event.repository.name }}>
           *Title*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
           *Changed files*: ${{ github.event.pull_request.changed_files }}
-          *Author*: ${{ github.event.pull_request.user.name }}
-          *Reviewers*: ${{ steps.reviewers.outputs.reviewers }}
+          *Author*: ${{ steps.pr-info.outputs.author_name }}
+          *Reviewers*: ${{ steps.pr-info.outputs.reviewers }}
           EOF
           )
 
