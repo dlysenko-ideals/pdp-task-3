@@ -31,11 +31,11 @@ jobs:
             REVIEWER_NAMES=""
             for login in $REVIEWER_LOGINS; do
               USER_INFO=$(gh api "/users/$login")
-              USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login' | sed -E 's/(.*)/<@\1>/' | tr '\n' ',' | sed 's/,$//')
+              USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
               if [ -z "$REVIEWER_NAMES" ]; then
-                REVIEWER_NAMES="$USER_NAME"
+                REVIEWER_NAMES="@$USER_NAME"
               else
-                REVIEWER_NAMES="$REVIEWER_NAMES, $USER_NAME"
+                REVIEWER_NAMES="$REVIEWER_NAMES, @$USER_NAME"
               fi
             done
             echo "reviewers=$REVIEWER_NAMES" >> $GITHUB_OUTPUT
