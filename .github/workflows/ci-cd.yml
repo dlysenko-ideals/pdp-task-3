@@ -12,54 +12,54 @@ permissions:
   contents: read
 
 jobs:
-  notify-pr:
-    name: PR Notification
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+  # notify-pr:
+  #   name: PR Notification
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
 
-    steps:
-      - name: Get PR Author Name and Reviewers
-        id: pr-info
-        run: |
-          AUTHOR_INFO=$(gh api "/users/${{ github.event.pull_request.user.login }}")
-          AUTHOR_NAME=$(echo "$AUTHOR_INFO" | jq -r '.name // .login')
-          echo "author_name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
+  #   steps:
+  #     - name: Get PR Author Name and Reviewers
+  #       id: pr-info
+  #       run: |
+  #         AUTHOR_INFO=$(gh api "/users/${{ github.event.pull_request.user.login }}")
+  #         AUTHOR_NAME=$(echo "$AUTHOR_INFO" | jq -r '.name // .login')
+  #         echo "author_name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
 
-          REVIEWER_LOGINS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].login')
+  #         REVIEWER_LOGINS=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" | jq -r '.users[].login')
 
-          if [ -n "$REVIEWER_LOGINS" ]; then
-            REVIEWER_NAMES=""
-            for login in $REVIEWER_LOGINS; do
-              USER_INFO=$(gh api "/users/$login")
-              USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
-              if [ -z "$REVIEWER_NAMES" ]; then
-                REVIEWER_NAMES="@$USER_NAME"
-              else
-                REVIEWER_NAMES="$REVIEWER_NAMES, @$USER_NAME"
-              fi
-            done
-            echo "reviewers=$REVIEWER_NAMES" >> $GITHUB_OUTPUT
-          else
-            echo "reviewers=Not assigned" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
+  #         if [ -n "$REVIEWER_LOGINS" ]; then
+  #           REVIEWER_NAMES=""
+  #           for login in $REVIEWER_LOGINS; do
+  #             USER_INFO=$(gh api "/users/$login")
+  #             USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
+  #             if [ -z "$REVIEWER_NAMES" ]; then
+  #               REVIEWER_NAMES="@$USER_NAME"
+  #             else
+  #               REVIEWER_NAMES="$REVIEWER_NAMES, @$USER_NAME"
+  #             fi
+  #           done
+  #           echo "reviewers=$REVIEWER_NAMES" >> $GITHUB_OUTPUT
+  #         else
+  #           echo "reviewers=Not assigned" >> $GITHUB_OUTPUT
+  #         fi
+  #       env:
+  #         GH_TOKEN: ${{ github.token }}
 
-      - name: Send PR Slack Notification
-        run: |
-          message=$(cat <<-EOF
-          ✅ A new pull request has been created:
-          *Project*: <https://github.com/${{ github.repository }}|${{ github.event.repository.name }}>
-          *Title*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
-          *Changed files*: ${{ github.event.pull_request.changed_files }}
-          *Author*: ${{ steps.pr-info.outputs.author_name }}
-          *Reviewers*: ${{ steps.pr-info.outputs.reviewers }}
-          EOF
-          )
+  #     - name: Send PR Slack Notification
+  #       run: |
+  #         message=$(cat <<-EOF
+  #         ✅ A new pull request has been created:
+  #         *Project*: <https://github.com/${{ github.repository }}|${{ github.event.repository.name }}>
+  #         *Title*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
+  #         *Changed files*: ${{ github.event.pull_request.changed_files }}
+  #         *Author*: ${{ steps.pr-info.outputs.author_name }}
+  #         *Reviewers*: ${{ steps.pr-info.outputs.reviewers }}
+  #         EOF
+  #         )
 
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${message}\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         curl -X POST -H 'Content-type: application/json' \
+  #           --data "{\"text\":\"${message}\"}" \
+  #           ${{ secrets.SLACK_WEBHOOK_URL }}
 
   lint-and-test:
     name: Lint and Test
@@ -112,47 +112,47 @@ jobs:
           path: dist/
           retention-days: 1
 
-  s3-sync:
-    name: Sync to S3
-    runs-on: ubuntu-latest
-    needs: build
+  # s3-sync:
+  #   name: Sync to S3
+  #   runs-on: ubuntu-latest
+  #   needs: build
 
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-files
-          path: dist/
+  #   steps:
+  #     - name: Download build artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: build-files
+  #         path: dist/
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Sync to S3
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: |
-          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --delete --exclude "*.html" --cache-control "max-age=31536000,public"
+  #     - name: Sync to S3
+  #       env:
+  #         S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  #       run: |
+  #         aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --delete --exclude "*.html" --cache-control "max-age=31536000,public"
 
-          aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --exclude "*" --include "*.html" --cache-control "max-age=0,no-cache,no-store,must-revalidate"
+  #         aws s3 sync dist/pdp-task-3/browser $S3_BUCKET --exclude "*" --include "*.html" --cache-control "max-age=0,no-cache,no-store,must-revalidate"
 
-  notify:
-    name: Slack Notification
-    runs-on: ubuntu-latest
-    needs: [lint-and-test, build, s3-sync]
-    if: always()
+  # notify:
+  #   name: Slack Notification
+  #   runs-on: ubuntu-latest
+  #   needs: [lint-and-test, build, s3-sync]
+  #   if: always()
 
-    steps:
-      - name: Send Slack Notification
-        run: |
-          if [[ "${{ needs.lint-and-test.result }}" == "success" && "${{ needs.build.result }}" == "success" && "${{ needs.s3-sync.result }}" == "success" ]]; then
-            message="🚀 Deployment successful for ${{ github.repository }} on branch ${{ github.ref_name }}"
-          else
-            message="❌ Deployment failed for ${{ github.repository }} on branch ${{ github.ref_name }}"
-          fi
+  #   steps:
+  #     - name: Send Slack Notification
+  #       run: |
+  #         if [[ "${{ needs.lint-and-test.result }}" == "success" && "${{ needs.build.result }}" == "success" && "${{ needs.s3-sync.result }}" == "success" ]]; then
+  #           message="🚀 Deployment successful for ${{ github.repository }} on branch ${{ github.ref_name }}"
+  #         else
+  #           message="❌ Deployment failed for ${{ github.repository }} on branch ${{ github.ref_name }}"
+  #         fi
 
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${message}\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         curl -X POST -H 'Content-type: application/json' \
+  #           --data "{\"text\":\"${message}\"}" \
+  #           ${{ secrets.SLACK_WEBHOOK_URL }}
